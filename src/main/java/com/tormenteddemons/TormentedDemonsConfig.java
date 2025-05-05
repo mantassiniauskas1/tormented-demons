@@ -1,11 +1,11 @@
-package com.example;
+package com.tormenteddemons;
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 
-@ConfigGroup("example")
-public interface ExampleConfig extends Config
+@ConfigGroup("tormenteddemons")
+public interface TormentedDemonsConfig extends Config
 {
 	@ConfigItem(
 		keyName = "greeting",
