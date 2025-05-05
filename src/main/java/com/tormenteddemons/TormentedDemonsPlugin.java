@@ -7,16 +7,21 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.InteractingChanged;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.*;
 import net.runelite.client.Notifier;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.NPCManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.api.events.HitsplatApplied;
 
+import java.time.Instant;
+import java.util.Objects;
+import javax.sound.sampled.*;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -50,6 +55,7 @@ public class TormentedDemonsPlugin extends Plugin
 	private boolean oneQuarter = false;
 
 	private Integer ticks;
+	private Integer totalDamage;
 
 	@Override
 	protected void startUp() throws Exception
@@ -89,6 +95,23 @@ public class TormentedDemonsPlugin extends Plugin
 			twoQuarters = false;
 			oneQuarter = false;
 			ticks = 0;
+			totalDamage = 0;
+		}
+	}
+
+	@Subscribe
+	public void onHitsplatApplied(HitsplatApplied hitsplatApplied)
+	{
+		Player player = client.getLocalPlayer();
+		Actor actor = hitsplatApplied.getActor();
+		if (!(actor instanceof NPC))
+		{
+			return;
+		}
+		Hitsplat hitsplat = hitsplatApplied.getHitsplat();
+		if (hitsplat.isMine()) {
+			totalDamage += hitsplat.getAmount();
+			log.info(String.valueOf(totalDamage));
 		}
 	}
 
@@ -131,31 +154,49 @@ public class TormentedDemonsPlugin extends Plugin
 				health = (minHealth + maxHealth + 1) / 2;
 			}
 
-			if (health <= 455 && !threeQuarters && health != 0)
+			//if (health <= 455 && !threeQuarters && health != 0)
+			if (totalDamage >= 150 && !threeQuarters)
 			{
-				notifier.notify("Keisk attacku");
+				playSound("switch.wav");
 				threeQuarters = true;
 			}
-			if (health <= 305 && !twoQuarters && health != 0)
+			//if (health <= 305 && !twoQuarters && health != 0)
+			if (totalDamage >= 300 && !twoQuarters)
 			{
-				notifier.notify("Keisk attacku");
+				playSound("switch.wav");
 				twoQuarters = true;
 			}
-			if (health <= 155 && !oneQuarter && health != 0)
+			//if (health <= 155 && !oneQuarter && health != 0)
+			if (totalDamage >= 450 && !oneQuarter)
 			{
-				notifier.notify("Keisk attacku");
+				playSound("switch.wav");
 				oneQuarter = true;
 			}
-			if (ticks >= 62)
+			if (ticks >= 60)
 			{
-				notifier.notify("BEK BEK BEK");
+				playSound("run.wav");
 				ticks = 0;
 			}
+		}
+	}
 
-
-			log.info(lastOpponent.getName());
-			log.info(String.valueOf(health));
-			log.info(String.valueOf(ticks));
+	private void playSound(String fileName)
+	{
+		try (InputStream audioSrc = getClass().getResourceAsStream("/audio/" + fileName))
+		{
+			if (audioSrc == null)
+			{
+				log.warn("Sound file not found: " + fileName);
+				return;
+			}
+			AudioInputStream audioStream = AudioSystem.getAudioInputStream(audioSrc);
+			Clip clip = AudioSystem.getClip();
+			clip.open(audioStream);
+			clip.start();
+		}
+		catch (UnsupportedAudioFileException | IOException | LineUnavailableException e)
+		{
+			log.error("Error playing sound: " + fileName, e);
 		}
 	}
 
